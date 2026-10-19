@@ -7,6 +7,14 @@ describe("parseWindowsIdentity", () => {
     const parsed = parseWindowsIdentity("MDC_IDENTITY\nUPN=jane.doe@miamidade.gov\nACCOUNT=COUNTY\\jdoe");
     assert.equal(parsed?.upn, "jane.doe@miamidade.gov");
     assert.equal(parsed?.account, "COUNTY\\jdoe");
+    assert.equal(parsed?.displayName, "");
+  });
+
+  it("keeps the Windows display name", () => {
+    const parsed = parseWindowsIdentity(
+      "MDC_IDENTITY\nUPN=e315170@miamidade.gov\nACCOUNT=COUNTY\\e315170\nDISPLAY=Valdes, Christian (CITD)",
+    );
+    assert.equal(parsed?.displayName, "Valdes, Christian (CITD)");
   });
 
   it("accepts a pasted County UPN", () => {

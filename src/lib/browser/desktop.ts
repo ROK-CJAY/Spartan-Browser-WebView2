@@ -15,7 +15,11 @@ export async function readDesktopWindowsIdentity() {
     ]);
     const upn = normalizeEmail(identity?.upn ?? "");
     if (!isCountyEmail(upn)) return null;
-    return { upn, account: identity?.account?.trim() ?? "" };
+    return {
+      upn,
+      account: identity?.account?.trim() ?? "",
+      displayName: identity?.displayName?.trim() ?? "",
+    };
   } catch {
     return null;
   }

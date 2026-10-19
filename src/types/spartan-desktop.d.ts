@@ -1,6 +1,7 @@
 export type SpartanWindowsIdentity = {
   upn: string;
   account: string;
+  displayName?: string;
 };
 
 export type DesktopLaunchResult = {

@@ -201,6 +201,7 @@ export function BrowserApp() {
       useBrowserStore.getState().setConfig({
         entraUpn: identity.upn,
         windowsAccount: identity.account,
+        windowsDisplayName: identity.displayName,
       });
     });
     const stop = window.spartanDesktop?.onOpenTab((url) => {

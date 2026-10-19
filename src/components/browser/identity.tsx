@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Monitor } from "lucide-react";
 import { useBrowserStore } from "@/lib/browser/store";
-import { displayNameFromUpn, parseWindowsIdentity } from "@/lib/browser/windows-identity";
+import { parseWindowsIdentity, personLabel } from "@/lib/browser/windows-identity";
 import { isCountyEmail } from "@/lib/browser/knowledge-base";
 import { isSpartanDesktop, readDesktopWindowsIdentity } from "@/lib/browser/desktop";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 export function initialsFrom(name: string) {
   return (
     name
+      .replace(/[(),]/g, " ")
       .split(/\s+/)
       .slice(0, 2)
       .map((s) => s[0])
@@ -27,7 +28,7 @@ export function SsoCard() {
 
   if (!upn) return <GuestSignIn />;
 
-  const name = displayNameFromUpn(upn);
+  const name = personLabel(upn, config.windowsDisplayName);
 
   return (
     <div className="overflow-hidden rounded-xl bg-[var(--panel)]">
@@ -71,7 +72,11 @@ export function GuestSignIn() {
         setWaiting(false);
         return;
       }
-      setConfig({ entraUpn: identity.upn, windowsAccount: identity.account });
+      setConfig({
+        entraUpn: identity.upn,
+        windowsAccount: identity.account,
+        windowsDisplayName: identity.displayName,
+      });
     });
     return () => {
       cancelled = true;
@@ -81,7 +86,11 @@ export function GuestSignIn() {
   function bind(text: string) {
     const parsed = parseWindowsIdentity(text);
     if (parsed) {
-      setConfig({ entraUpn: parsed.upn, windowsAccount: parsed.account });
+      setConfig({
+        entraUpn: parsed.upn,
+        windowsAccount: parsed.account,
+        windowsDisplayName: parsed.displayName,
+      });
       setError("");
       return;
     }
@@ -140,7 +149,8 @@ export function GuestSignIn() {
 export function AccountChip({ onOpen }: { onOpen: () => void }) {
   const profile = useBrowserStore((s) => s.activeProfile());
   const upn = useBrowserStore((s) => s.config.entraUpn);
-  const name = upn ? displayNameFromUpn(upn) : profile.name;
+  const display = useBrowserStore((s) => s.config.windowsDisplayName);
+  const name = upn ? personLabel(upn, display) : profile.name;
   return (
     <button
       type="button"
@@ -167,7 +177,8 @@ export function AccountChip({ onOpen }: { onOpen: () => void }) {
 export function RailAvatar({ onOpen }: { onOpen: () => void }) {
   const profile = useBrowserStore((s) => s.activeProfile());
   const upn = useBrowserStore((s) => s.config.entraUpn);
-  const name = upn ? displayNameFromUpn(upn) : profile.name;
+  const display = useBrowserStore((s) => s.config.windowsDisplayName);
+  const name = upn ? personLabel(upn, display) : profile.name;
   return (
     <button
       type="button"

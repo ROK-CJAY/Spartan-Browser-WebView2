@@ -18,7 +18,7 @@ import { composeAgentReply } from "@/lib/browser/desk-reply";
 import { DESK_AGENT_SUGGESTIONS, featuredArticles, retrieveArticles } from "@/lib/browser/knowledge-base";
 import { isHostedAdmin, KNOWLEDGE_POLL_MS } from "@/lib/browser/desk-updates";
 import { getKnowledgeAccess, listPublishedKnowledge } from "@/lib/browser/knowledge-server";
-import { displayNameFromUpn } from "@/lib/browser/windows-identity";
+import { personLabel } from "@/lib/browser/windows-identity";
 import { useBrowserStore } from "@/lib/browser/store";
 import {
   KNOWLEDGE_URL,
@@ -43,11 +43,11 @@ export function WorkspaceHome() {
   const navigate = useBrowserStore((s) => s.navigate);
   const profile = useBrowserStore((s) => s.activeProfile());
   const upn = useBrowserStore((s) => s.config.entraUpn);
+  const display = useBrowserStore((s) => s.config.windowsDisplayName);
   const ollamaEnabled = useBrowserStore((s) => s.config.ollamaEnabled);
   const ollamaUrl = useBrowserStore((s) => s.config.ollamaUrl);
   const ollamaModel = useBrowserStore((s) => s.config.ollamaModel);
-  const name = upn ? displayNameFromUpn(upn) : profile.name;
-  const first = name.split(/\s+/)[0] || name;
+  const name = upn ? personLabel(upn, display) : profile.name;
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<DeskAgentResult | null>(null);
@@ -111,7 +111,7 @@ export function WorkspaceHome() {
             IT Service Center
           </p>
           <h1 className="font-display text-3xl leading-tight font-medium tracking-tight text-balance sm:text-4xl">
-            {upn ? `Welcome back, ${first}` : "Miami-Dade Help Desk"}
+            {upn ? `Welcome back, ${name}` : "Miami-Dade Help Desk"}
           </h1>
           <p className="max-w-2xl text-sm leading-relaxed text-[var(--muted)] text-pretty">
             {upn

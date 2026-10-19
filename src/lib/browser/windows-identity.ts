@@ -8,10 +8,19 @@ if (-not $upn) {
     $upn = [System.DirectoryServices.AccountManagement.UserPrincipal]::Current.UserPrincipalName
   } catch {}
 }
+$display = ''
+try {
+  Add-Type -AssemblyName System.DirectoryServices.AccountManagement -ErrorAction Stop
+  $display = [System.DirectoryServices.AccountManagement.UserPrincipal]::Current.DisplayName
+} catch {}
+if (-not $display) {
+  try { $display = ([adsi]"WinNT://$env:USERDOMAIN/$env:USERNAME,user").FullName } catch {}
+}
 $account = whoami
 Write-Output 'MDC_IDENTITY'
 Write-Output ('UPN=' + $upn)
 Write-Output ('ACCOUNT=' + $account)
+Write-Output ('DISPLAY=' + $display)
 Write-Output ('USER=' + $env:USERNAME)
 Write-Output ('DOMAIN=' + $env:USERDOMAIN)
 `;
@@ -23,6 +32,7 @@ export function windowsIdentityCommand() {
 export type WindowsIdentity = {
   upn: string;
   account: string;
+  displayName: string;
 };
 
 export function parseWindowsIdentity(raw: string): WindowsIdentity | null {
@@ -30,6 +40,7 @@ export function parseWindowsIdentity(raw: string): WindowsIdentity | null {
   if (!text) return null;
   const upnLine = text.match(/(?:^|\n)\s*UPN=([^\r\n]+)/i);
   const accountLine = text.match(/(?:^|\n)\s*ACCOUNT=([^\r\n]+)/i);
+  const displayLine = text.match(/(?:^|\n)\s*DISPLAY=([^\r\n]+)/i);
   const upnFromLine = upnLine?.[1]?.trim();
   const lone = text.includes("@") && !text.includes("\n") ? text : "";
   const upn = normalizeEmail(upnFromLine || lone);
@@ -37,6 +48,7 @@ export function parseWindowsIdentity(raw: string): WindowsIdentity | null {
   return {
     upn,
     account: (accountLine?.[1] ?? "").trim(),
+    displayName: (displayLine?.[1] ?? "").trim(),
   };
 }
 
@@ -45,4 +57,10 @@ export function displayNameFromUpn(upn: string) {
   return local
     .replace(/[._]/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function personLabel(upn: string, displayName?: string) {
+  const display = displayName?.trim();
+  if (display && !display.includes("@")) return display;
+  return upn ? displayNameFromUpn(upn) : "";
 }

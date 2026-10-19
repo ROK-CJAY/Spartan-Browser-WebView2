@@ -25,19 +25,33 @@ static class Native
         "--enable-features=CloudAPAuth,msSingleSignOnOSForPrimaryAccountIsShared " +
         "--disable-features=ThirdPartyStoragePartitioning,TrackingProtection3pcd";
 
-    public static async Task<(string upn, string account)?> WindowsIdentityAsync()
+    public static async Task<object?> WindowsIdentityAsync()
     {
         try
         {
-            var upn = (await RunAsync("whoami.exe", "/upn")).Trim();
-            var account = (await RunAsync("whoami.exe", "")).Trim();
+            var raw = await RunAsync("powershell.exe",
+                "-NoProfile -Command \"$u=(whoami /upn); $a=(whoami); $d=''; try { Add-Type -AssemblyName System.DirectoryServices.AccountManagement; $d=[System.DirectoryServices.AccountManagement.UserPrincipal]::Current.DisplayName } catch {}; if (-not $d) { try { $d=([adsi]('WinNT://'+$env:USERDOMAIN+'/'+$env:USERNAME+',user')).FullName } catch {} }; Write-Output ('UPN='+$u); Write-Output ('ACCOUNT='+$a); Write-Output ('DISPLAY='+$d)\"");
+            var upn = Line(raw, "UPN");
+            var account = Line(raw, "ACCOUNT");
+            var displayName = Line(raw, "DISPLAY");
             if (string.IsNullOrWhiteSpace(upn) || !upn.Contains('@')) return null;
-            return (upn, account);
+            return new { upn, account, displayName };
         }
         catch
         {
             return null;
         }
+    }
+
+    static string Line(string raw, string key)
+    {
+        foreach (var line in raw.Split('\n'))
+        {
+            var trimmed = line.Trim();
+            if (trimmed.StartsWith(key + "=", StringComparison.OrdinalIgnoreCase))
+                return trimmed[(key.Length + 1)..].Trim();
+        }
+        return "";
     }
 
     static readonly Dictionary<string, (string? path, string cmd, string[] args)[]> Launchers = new()

@@ -166,6 +166,7 @@ export type BrowserConfig = {
   scriptFolder: string;
   entraUpn: string;
   windowsAccount: string;
+  windowsDisplayName: string;
   clearOnClose: ClearOnClose;
 };
 
@@ -473,6 +474,7 @@ export function defaultConfig(): BrowserConfig {
     scriptFolder: "%LOCALAPPDATA%\\MDCHelpDesk\\Scripts",
     entraUpn: "",
     windowsAccount: "",
+    windowsDisplayName: "",
     clearOnClose: defaultClearOnClose(),
   };
 }
