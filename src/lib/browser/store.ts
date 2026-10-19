@@ -136,6 +136,7 @@ type BrowserStore = BrowserPayload & {
   setActiveCall: (call: ActiveCall) => void;
   clearActiveCall: () => void;
   addCallNote: (body: string) => void;
+  finishCallback: (id: string) => void;
   addLogin: (
     site: string,
     username: string,
@@ -882,7 +883,8 @@ export const useBrowserStore = create<BrowserStore>()(
       addCallNote: (body) => {
         const text = body.trim();
         const call = get().activeCall;
-        if (!text || !call?.employeeId.trim()) return;
+        if (!text || !call) return;
+        if (!call.employeeId.trim() && !call.name.trim()) return;
         const note: CallNote = {
           id: newId(),
           employeeId: call.employeeId.trim(),
@@ -892,9 +894,14 @@ export const useBrowserStore = create<BrowserStore>()(
           body: text,
           author: get().config.windowsDisplayName || get().config.entraUpn || "Desk",
           at: new Date().toISOString(),
+          done: false,
         };
         set((s) => ({ callNotes: [note, ...s.callNotes].slice(0, 200) }));
       },
+      finishCallback: (id) =>
+        set((s) => ({
+          callNotes: s.callNotes.map((note) => (note.id === id ? { ...note, done: true } : note)),
+        })),
       addLogin: async (site, username, password, extra) => {
         const st = get();
         if (!st.vaultUnlocked && password) return;

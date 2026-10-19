@@ -197,6 +197,7 @@ export type CallNote = {
   body: string;
   author: string;
   at: string;
+  done?: boolean;
 };
 
 export type ActiveCall = {

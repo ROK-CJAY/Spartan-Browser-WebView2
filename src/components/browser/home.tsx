@@ -230,12 +230,11 @@ function CallerCard() {
   const setCall = useBrowserStore((s) => s.setActiveCall);
   const clearCall = useBrowserStore((s) => s.clearActiveCall);
   const addNote = useBrowserStore((s) => s.addCallNote);
+  const finishCallback = useBrowserStore((s) => s.finishCallback);
   const [draft, setDraft] = useState({ name: "", employeeId: "", department: "", ticket: "" });
   const [note, setNote] = useState("");
   const current = call ?? draft;
-  const matches = notes.filter(
-    (row) => current.employeeId.trim() && row.employeeId.toLowerCase() === current.employeeId.trim().toLowerCase(),
-  );
+  const open = notes.filter((row) => !row.done);
 
   function update(partial: Partial<typeof draft>) {
     const next = { ...current, ...partial };
@@ -292,37 +291,51 @@ function CallerCard() {
         />
       </div>
       <p className="mt-3 text-xs text-[var(--muted)]">
-        This card stays up while you open MyIT, SmartIT, or NSD. End call clears it. Notes stay on this PC, filed by employee ID, until the cloud profile exists.
+        This card stays up while you open MyIT, SmartIT, or NSD. If you cannot finish the issue, save a callback. It stays on this laptop until you mark it called.
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="Note for the next shift"
-          aria-label="Note for the next shift"
+          placeholder="Why to call them back"
+          aria-label="Callback note"
           className="h-11 min-w-0 flex-1 rounded-xl bg-[var(--btn)] px-3 text-sm outline-none"
         />
         <Button
           type="button"
           variant="outline"
-          disabled={!note.trim() || !current.employeeId.trim()}
+          disabled={!note.trim() || (!current.employeeId.trim() && !current.name.trim())}
           onClick={() => {
             addNote(note);
             setNote("");
           }}
         >
-          Save note
+          Save callback
         </Button>
       </div>
-      {matches.length ? (
+      {open.length ? (
         <ul className="mt-4 divide-y divide-[var(--border)]">
-          {matches.slice(0, 5).map((row) => (
-            <li key={row.id} className="py-2 text-sm">
-              <p>{row.body}</p>
-              <p className="mt-0.5 text-xs text-[var(--muted)]">
-                {row.author} · {new Date(row.at).toLocaleString()}
-                {row.ticket ? ` · ${row.ticket}` : ""}
-              </p>
+          {open.slice(0, 8).map((row) => (
+            <li key={row.id} className="flex items-start gap-3 py-2 text-sm">
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">
+                  {row.callerName || "End user"}
+                  {row.employeeId ? ` · ${row.employeeId}` : ""}
+                </span>
+                <span className="block">{row.body}</span>
+                <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                  {new Date(row.at).toLocaleString()}
+                  {row.department ? ` · ${row.department}` : ""}
+                  {row.ticket ? ` · ${row.ticket}` : ""}
+                </span>
+              </span>
+              <button
+                type="button"
+                className="shrink-0 rounded-lg px-2 py-1 text-xs hover:bg-[var(--btn)]"
+                onClick={() => finishCallback(row.id)}
+              >
+                Called
+              </button>
             </li>
           ))}
         </ul>

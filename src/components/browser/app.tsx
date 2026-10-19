@@ -247,7 +247,6 @@ function Chrome({
   const config = useBrowserStore((s) => s.config);
   const profile = useBrowserStore((s) => s.activeProfile());
   const tab = useBrowserStore((s) => s.activeTab());
-  const activeCall = useBrowserStore((s) => s.activeCall);
   const navigate = useBrowserStore((s) => s.navigate);
   const newTab = useBrowserStore((s) => s.newTab);
   const closeTab = useBrowserStore((s) => s.closeTab);
@@ -831,7 +830,7 @@ function Chrome({
             </div>
           ) : null}
           <div className="flex min-h-0 min-w-0 flex-1 flex-col" style={{ zoom: `${zoom}%` }}>
-            {activeCall && tab.url !== HOME_URL ? <CallStrip /> : null}
+            {tab.url !== HOME_URL ? <CallStrip /> : null}
             <div className="relative min-h-0 min-w-0 flex-1">
               {profile.tabs.map((t) => (
                 <div
@@ -1371,24 +1370,30 @@ function SavePasswordBar() {
 
 function CallStrip() {
   const call = useBrowserStore((s) => s.activeCall);
+  const open = useBrowserStore((s) => s.callNotes.filter((note) => !note.done).length);
   const clear = useBrowserStore((s) => s.clearActiveCall);
   const selectHome = () => {
     const home = useBrowserStore.getState().activeProfile().tabs.find((t) => t.url === HOME_URL);
     if (home) useBrowserStore.getState().selectTab(home.id);
   };
-  if (!call) return null;
+  if (!call && open === 0) return null;
   return (
     <div className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs">
-      <span className="font-medium">On a call</span>
+      <span className="font-medium">{call ? "On a call" : "Callbacks"}</span>
       <span className="min-w-0 flex-1 truncate text-[var(--muted)]">
-        {[call.name, call.employeeId, call.department, call.ticket].filter(Boolean).join(" · ")}
+        {call
+          ? [call.name, call.employeeId, call.department, call.ticket].filter(Boolean).join(" · ")
+          : `${open} to call back`}
+        {call && open ? ` · ${open} callback${open === 1 ? "" : "s"}` : ""}
       </span>
       <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--btn)]" onClick={selectHome}>
         Open card
       </button>
-      <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--btn)]" onClick={clear}>
-        End call
-      </button>
+      {call ? (
+        <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--btn)]" onClick={clear}>
+          End call
+        </button>
+      ) : null}
     </div>
   );
 }
