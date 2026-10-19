@@ -93,14 +93,20 @@ export function WorkspaceHome() {
         data: { question, ollamaEnabled, ollamaUrl, ollamaModel },
       });
       setResult(next);
-      setOpenId(next.articles[0]?.id ?? null);
+      setOpenId(null);
     } catch {
       const fallback = localDeskResult(question);
       setResult(fallback);
-      setOpenId(fallback.articles[0]?.id ?? null);
+      setOpenId(null);
     } finally {
       setBusy(false);
     }
+  }
+
+  function clearAsk() {
+    setResult(null);
+    setQuery("");
+    setOpenId(null);
   }
 
   return (
@@ -146,6 +152,7 @@ export function WorkspaceHome() {
           agentRef={agentRef}
           onQuery={setQuery}
           onAsk={ask}
+          onClear={clearAsk}
           onOpenId={setOpenId}
         />
         <QuickAccessPanel />
@@ -225,6 +232,7 @@ function DeskAgentSearch({
   agentRef,
   onQuery,
   onAsk,
+  onClear,
   onOpenId,
 }: {
   query: string;
@@ -234,6 +242,7 @@ function DeskAgentSearch({
   agentRef: RefObject<HTMLElement | null>;
   onQuery: (value: string) => void;
   onAsk: (raw?: string) => Promise<void>;
+  onClear: () => void;
   onOpenId: (id: string | null) => void;
 }) {
   function onSubmit(event: FormEvent) {
@@ -276,7 +285,7 @@ function DeskAgentSearch({
           </button>
         ))}
       </div>
-      {result ? <AgentResult result={result} openId={openId} setOpenId={onOpenId} /> : null}
+      {result ? <AgentResult result={result} openId={openId} setOpenId={onOpenId} onClear={onClear} /> : null}
     </section>
   );
 }
@@ -312,10 +321,12 @@ function AgentResult({
   result,
   openId,
   setOpenId,
+  onClear,
 }: {
   result: DeskAgentResult;
   openId: string | null;
   setOpenId: (id: string | null) => void;
+  onClear: () => void;
 }) {
   const articles = result.articles;
   const mixed = new Set(articles.map((a) => a.currency)).size > 1;
@@ -330,14 +341,36 @@ function AgentResult({
     <div ref={boxRef} className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
       {spoken ? (
         <div className="space-y-3">
-          <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">
-            {result.mode === "ollama" ? "Desk agent · this PC" : "Desk agent"}
-          </p>
-          <div className="space-y-3 text-sm leading-relaxed whitespace-pre-wrap">{formatAgentText(result.text)}</div>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">
+              {result.mode === "ollama" ? "Desk agent · this PC" : "Desk agent"}
+            </p>
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-xs text-[var(--muted)] hover:bg-[var(--btn)] hover:text-[var(--fg)]"
+            >
+              <X className="size-3.5" />
+              Clear
+            </button>
+          </div>
+          <div className="max-h-52 space-y-3 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap">
+            {formatAgentText(result.text)}
+          </div>
         </div>
       ) : (
         <div className="space-y-2">
-          <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">Desk agent</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">Desk agent</p>
+            <button
+              type="button"
+              onClick={onClear}
+              className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-xs text-[var(--muted)] hover:bg-[var(--btn)] hover:text-[var(--fg)]"
+            >
+              <X className="size-3.5" />
+              Clear
+            </button>
+          </div>
           <p className="text-sm leading-relaxed text-[var(--muted)]">{result.ok ? "" : result.error}</p>
         </div>
       )}
