@@ -86,18 +86,17 @@ export function WorkspaceHome() {
     if (!question || busy) return;
     setQuery(question);
     setBusy(true);
-    setOpenId(null);
-    agentRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    agentRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     try {
       const next = await askDeskAgent({
         data: { question, ollamaEnabled, ollamaUrl, ollamaModel },
       });
       setResult(next);
-      setOpenId(null);
+      setOpenId(bestArticleId(next.articles));
     } catch {
       const fallback = localDeskResult(question);
       setResult(fallback);
-      setOpenId(null);
+      setOpenId(bestArticleId(fallback.articles));
     } finally {
       setBusy(false);
     }
@@ -147,13 +146,9 @@ export function WorkspaceHome() {
         <DeskAgentSearch
           query={query}
           busy={busy}
-          result={result}
-          openId={openId}
           agentRef={agentRef}
           onQuery={setQuery}
           onAsk={ask}
-          onClear={clearAsk}
-          onOpenId={setOpenId}
         />
         <QuickAccessPanel />
 
@@ -220,6 +215,9 @@ export function WorkspaceHome() {
           </div>
         </section>
       </div>
+      {result ? (
+        <AgentSheet result={result} openId={openId} onPick={setOpenId} onClose={clearAsk} />
+      ) : null}
     </div>
   );
 }
@@ -227,23 +225,15 @@ export function WorkspaceHome() {
 function DeskAgentSearch({
   query,
   busy,
-  result,
-  openId,
   agentRef,
   onQuery,
   onAsk,
-  onClear,
-  onOpenId,
 }: {
   query: string;
   busy: boolean;
-  result: DeskAgentResult | null;
-  openId: string | null;
   agentRef: RefObject<HTMLElement | null>;
   onQuery: (value: string) => void;
   onAsk: (raw?: string) => Promise<void>;
-  onClear: () => void;
-  onOpenId: (id: string | null) => void;
 }) {
   function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -285,16 +275,118 @@ function DeskAgentSearch({
           </button>
         ))}
       </div>
-      {result ? <AgentResult result={result} openId={openId} setOpenId={onOpenId} onClear={onClear} /> : null}
     </section>
   );
 }
 
-function formatAgentText(text: string) {
-  return text
-    .replace(/\*\*(.+?)\*\*/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/^\s*[-*]\s+/gm, "• ");
+function bestArticleId(articles: DeskAgentArticle[]) {
+  return (articles.find((article) => article.currency === "current") ?? articles[0])?.id ?? null;
+}
+
+function AgentSheet({
+  result,
+  openId,
+  onPick,
+  onClose,
+}: {
+  result: DeskAgentResult;
+  openId: string | null;
+  onPick: (id: string) => void;
+  onClose: () => void;
+}) {
+  const articles = result.articles;
+  const selected = articles.find((article) => article.id === openId) ?? articles[0];
+
+  useEffect(() => {
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end bg-black/50" onClick={onClose}>
+      <aside
+        role="dialog"
+        aria-label="Desk agent answer"
+        className="flex h-full w-full max-w-xl flex-col border-l border-[var(--border)] bg-[var(--bg)] shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <header className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">
+              {result.ok && result.mode === "ollama" ? "Desk agent · this PC" : "Desk agent"}
+            </p>
+            <h2 className="mt-1 text-lg leading-snug font-medium">
+              {selected?.title ?? "No matching article"}
+            </h2>
+            {selected ? (
+              <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                <span>{selected.id}</span>
+                <CurrencyBadge currency={selected.currency} />
+                <span>reviewed {selected.lastReviewed}</span>
+              </p>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close answer"
+            className="grid size-11 shrink-0 place-items-center rounded-full hover:bg-[var(--btn)]"
+          >
+            <X className="size-4" />
+          </button>
+        </header>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {selected ? (
+            <div className="space-y-4">
+              {selected.currency !== "current" ? (
+                <p className="rounded-xl bg-[var(--panel)] px-3 py-2 text-sm text-[var(--muted)]">
+                  {selected.currency === "outdated"
+                    ? "This article is outdated. Confirm it before quoting it as policy."
+                    : "This article is marked for review."}
+                  {selected.staleNote ? ` ${selected.staleNote}` : ""}
+                </p>
+              ) : null}
+              <p className="text-sm leading-relaxed">{selected.summary}</p>
+              <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+                {selected.steps.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ol>
+            </div>
+          ) : (
+            <p className="text-sm leading-relaxed text-[var(--muted)]">
+              {result.ok ? "No article matched." : result.error}
+            </p>
+          )}
+        </div>
+        {articles.length > 1 ? (
+          <footer className="border-t border-[var(--border)] px-5 py-3">
+            <p className="mb-2 text-xs text-[var(--muted)]">Other matches</p>
+            <div className="flex flex-wrap gap-2">
+              {articles.map((article) => (
+                <button
+                  key={article.id}
+                  type="button"
+                  onClick={() => onPick(article.id)}
+                  className={cn(
+                    "min-h-9 rounded-full border px-3 text-xs",
+                    article.id === selected?.id
+                      ? "border-[var(--accent)] text-[var(--fg)]"
+                      : "border-[var(--border)] text-[var(--muted)] hover:text-[var(--fg)]",
+                  )}
+                >
+                  {article.id}
+                </button>
+              ))}
+            </div>
+          </footer>
+        ) : null}
+      </aside>
+    </div>
+  );
 }
 
 function localDeskResult(question: string): DeskAgentResult {
@@ -315,122 +407,6 @@ function localDeskResult(question: string): DeskAgentResult {
     };
   }
   return { ok: true, mode: "agent", text: composeAgentReply(question, articles), articles };
-}
-
-function AgentResult({
-  result,
-  openId,
-  setOpenId,
-  onClear,
-}: {
-  result: DeskAgentResult;
-  openId: string | null;
-  setOpenId: (id: string | null) => void;
-  onClear: () => void;
-}) {
-  const articles = result.articles;
-  const mixed = new Set(articles.map((a) => a.currency)).size > 1;
-  const spoken = result.ok && result.text;
-  const boxRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    boxRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [result]);
-
-  return (
-    <div ref={boxRef} className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
-      {spoken ? (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">
-              {result.mode === "ollama" ? "Desk agent · this PC" : "Desk agent"}
-            </p>
-            <button
-              type="button"
-              onClick={onClear}
-              className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-xs text-[var(--muted)] hover:bg-[var(--btn)] hover:text-[var(--fg)]"
-            >
-              <X className="size-3.5" />
-              Clear
-            </button>
-          </div>
-          <div className="max-h-52 space-y-3 overflow-y-auto text-sm leading-relaxed whitespace-pre-wrap">
-            {formatAgentText(result.text)}
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-xs font-medium tracking-[0.14em] text-[var(--muted)] uppercase">Desk agent</p>
-            <button
-              type="button"
-              onClick={onClear}
-              className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-xs text-[var(--muted)] hover:bg-[var(--btn)] hover:text-[var(--fg)]"
-            >
-              <X className="size-3.5" />
-              Clear
-            </button>
-          </div>
-          <p className="text-sm leading-relaxed text-[var(--muted)]">{result.ok ? "" : result.error}</p>
-        </div>
-      )}
-      {mixed ? (
-        <p className="mt-3 text-xs text-[var(--muted)]">
-          Remedy has mixed-age copies of this topic. Current articles take priority over outdated ones.
-        </p>
-      ) : null}
-      {articles.length ? (
-        <ul className="mt-4 divide-y divide-[var(--border)]">
-          {articles.map((article) => (
-            <ArticleRow
-              key={article.id}
-              article={article}
-              open={openId === article.id}
-              onToggle={() => setOpenId(openId === article.id ? null : article.id)}
-            />
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  );
-}
-
-function ArticleRow({
-  article,
-  open,
-  onToggle,
-}: {
-  article: DeskAgentArticle;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <li>
-      <button type="button" onClick={onToggle} className="flex min-h-11 w-full items-start gap-3 py-3 text-left">
-        <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-medium">{article.title}</span>
-            <CurrencyBadge currency={article.currency} />
-          </span>
-          <span className="mt-0.5 block text-xs text-[var(--muted)]">
-            {article.id} · reviewed {article.lastReviewed}
-          </span>
-        </span>
-        {open ? <ChevronUp className="mt-1 size-4 text-[var(--muted)]" /> : <ChevronDown className="mt-1 size-4 text-[var(--muted)]" />}
-      </button>
-      {open ? (
-        <div className="pb-3">
-          <p className="text-sm leading-relaxed text-[var(--muted)]">{article.summary}</p>
-          {article.staleNote ? <p className="mt-2 text-xs text-[var(--muted)]">{article.staleNote}</p> : null}
-          <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed">
-            {article.steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-        </div>
-      ) : null}
-    </li>
-  );
 }
 
 function CurrencyBadge({ currency }: { currency: DeskAgentArticle["currency"] }) {
