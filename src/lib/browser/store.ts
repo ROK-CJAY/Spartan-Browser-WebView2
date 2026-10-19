@@ -447,6 +447,12 @@ export const useBrowserStore = create<BrowserStore>()(
       navigate: (raw, title) => {
         const url = normalizeUrl(raw, get().config.searchEngine);
         const s = get();
+        const active = s.activeTab();
+        const leavingHome = active?.url === HOME_URL && url !== HOME_URL && !url.startsWith("mdc://");
+        if (leavingHome) {
+          get().newTab(url);
+          return;
+        }
         set({
           addressDraft: url,
           menuOpen: false,
@@ -553,6 +559,7 @@ export const useBrowserStore = create<BrowserStore>()(
       closeTab: (id) => {
         const s = get();
         const closing = s.activeProfile().tabs.find((t) => t.id === id);
+        if (closing?.url === HOME_URL) return;
         set({
           closedTabs: closing ? [...s.closedTabs, closing].slice(-25) : s.closedTabs,
           profiles: withActive(s.profiles, s.activeProfileId, (p) => {

@@ -618,6 +618,21 @@ function Chrome({
           ) : null}
           {!config.verticalTabs ? (
             <div className="flex items-end gap-1 overflow-x-auto px-2 pt-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const home = profile.tabs.find((t) => t.url === HOME_URL);
+                  if (home) selectTab(home.id);
+                  else newTab(HOME_URL);
+                }}
+                className={cn(
+                  "flex h-8 items-center gap-1.5 rounded-t-lg px-3 text-xs",
+                  tab.url === HOME_URL ? "bg-[var(--bg)]" : "bg-[var(--btn)]/60 hover:bg-[var(--btn)]",
+                )}
+              >
+                <Home className="size-3.5" />
+                <span>Home</span>
+              </button>
               {profile.tabs
                 .filter((t) => t.url !== HOME_URL)
                 .map((t) => (
@@ -765,6 +780,21 @@ function Chrome({
         <div className="flex min-h-0 flex-1">
           {config.verticalTabs && !kiosk ? (
             <div className="flex w-44 shrink-0 flex-col gap-1 overflow-y-auto border-r border-[var(--border)] bg-[var(--panel)] p-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const home = profile.tabs.find((t) => t.url === HOME_URL);
+                  if (home) selectTab(home.id);
+                  else newTab(HOME_URL);
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-2 py-2 text-left text-xs",
+                  tab.url === HOME_URL ? "bg-[var(--btn)]" : "hover:bg-[var(--btn)]",
+                )}
+              >
+                <Home className="size-3.5" />
+                <span>Home</span>
+              </button>
               {profile.tabs
                 .filter((t) => t.url !== HOME_URL)
                 .map((t) => (
@@ -800,30 +830,20 @@ function Chrome({
             </div>
           ) : null}
           <div className="flex min-h-0 min-w-0 flex-1" style={{ zoom: `${zoom}%` }}>
-            <div
-              className={cn(
-                "min-h-0 min-w-0",
-                tab.url === HOME_URL ? "flex-1" : "w-[26rem] shrink-0 border-r border-[var(--border)]",
-              )}
-            >
-              <WorkspaceHome />
+            <div className="relative min-h-0 min-w-0 flex-1">
+              {profile.tabs.map((t) => (
+                <div
+                  key={t.id}
+                  className={cn(
+                    "absolute inset-0 h-full w-full",
+                    t.id === tab.id ? "z-10" : "z-0 invisible pointer-events-none",
+                  )}
+                  aria-hidden={t.id !== tab.id}
+                >
+                  <PageView tabId={t.id} url={t.url} title={t.title} reloadKey={reloadKeys[t.id] ?? 0} />
+                </div>
+              ))}
             </div>
-            {tab.url !== HOME_URL ? (
-              <div className="relative min-h-0 min-w-0 flex-1">
-                {profile.tabs.map((t) => (
-                  <div
-                    key={t.id}
-                    className={cn(
-                      "absolute inset-0 h-full w-full",
-                      t.id === tab.id ? "z-10" : "z-0 invisible pointer-events-none",
-                    )}
-                    aria-hidden={t.id !== tab.id}
-                  >
-                    <PageView tabId={t.id} url={t.url} title={t.title} reloadKey={reloadKeys[t.id] ?? 0} />
-                  </div>
-                ))}
-              </div>
-            ) : null}
           </div>
         </div>
         {findOpen ? (
@@ -1316,7 +1336,7 @@ function PageView({
   title: string;
   reloadKey: number;
 }) {
-  if (url === HOME_URL || url === "about:blank") return <WorkspaceHome />;
+  if (url === HOME_URL) return <WorkspaceHome />;
   if (url === SETTINGS_URL) return <SettingsPage />;
   if (url === KNOWLEDGE_URL) return <KnowledgeAdminPage />;
   if (url === HISTORY_URL) return <HistoryPage />;
