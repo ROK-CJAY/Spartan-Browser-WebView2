@@ -1,6 +1,6 @@
 # Spartan Browser WebView2
 
-Windows host for the Help Desk desk. It uses Microsoft Edge WebView2 instead of Electron.
+Windows host for the Help Desk desk, built on Microsoft Edge WebView2.
 
 The React desk is unchanged. This host starts the local desk server, opens it in WebView2, and provides Windows identity, desktop launchers, NTLM/negotiate for `*.miamidade.gov`, kiosk (F11), and a GitHub release updater.
 

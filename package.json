@@ -4,7 +4,6 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
-  "main": "electron-main.cjs",
   "overrides": {
     "nf3": "0.3.17"
   },
@@ -20,8 +19,7 @@
     "check:auth": "node scripts/check-auth-invariant.mjs",
     "test": "node --test 'scripts/**/*.test.mjs' && node --experimental-strip-types --test src/lib/app-data/app-data.test.ts src/lib/app-data/readiness-schedule.test.ts src/lib/auth/gate-identity.test.ts src/lib/auth/sign-in-gate.test.ts src/lib/browser/elevated-scripts.test.ts src/lib/browser/knowledge-base.test.ts src/lib/browser/knowledge-import.test.ts src/lib/browser/desk-reply.test.ts src/lib/browser/desk-updates.test.ts src/lib/browser/types.test.ts src/lib/browser/windows-identity.test.ts",
     "lint": "eslint .",
-    "format": "prettier --write .",
-    "electron:build": "node scripts/electron-pack.mjs --win"
+    "format": "prettier --write ."
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.4",
@@ -58,7 +56,6 @@
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "date-fns": "^4.0.0",
-    "electron-updater": "^6.8.9",
     "jose": "6.2.9",
     "kysely": "^0.28.5",
     "lucide-react": "^0.510.0",
@@ -85,8 +82,6 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^5.2.0",
-    "electron": "^36.9.5",
-    "electron-builder": "^26.15.3",
     "eslint": "^9.20.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",

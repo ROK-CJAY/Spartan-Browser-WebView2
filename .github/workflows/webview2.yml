@@ -24,6 +24,8 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+        env:
+          SPARTAN_SERVER: "1"
       - name: Publish WebView2 host
         run: dotnet publish host/SpartanBrowser/SpartanBrowser.csproj -c Release -r win-x64 --self-contained true -o publish
       - name: Bundle the desk server

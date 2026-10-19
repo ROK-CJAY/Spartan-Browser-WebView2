@@ -28,7 +28,7 @@ export type DesktopUpdateStatus = {
 
 export type SpartanDesktopApi = {
   packaged: boolean;
-  host?: "electron" | "webview2";
+  host?: "webview2";
   version: () => Promise<string>;
   windowsIdentity: () => Promise<SpartanWindowsIdentity | null>;
   launchApp: (id: string) => Promise<DesktopLaunchResult>;
