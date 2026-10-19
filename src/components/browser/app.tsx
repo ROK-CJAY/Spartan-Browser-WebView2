@@ -381,7 +381,7 @@ function Chrome({
       }
       if (e.ctrlKey && e.key.toLowerCase() === "t" && !e.shiftKey) {
         e.preventDefault();
-        store.newTab();
+        store.newTab("about:blank");
         return;
       }
       if (e.ctrlKey && e.key.toLowerCase() === "d") {
@@ -618,7 +618,9 @@ function Chrome({
           ) : null}
           {!config.verticalTabs ? (
             <div className="flex items-end gap-1 overflow-x-auto px-2 pt-1.5">
-              {profile.tabs.map((t) => (
+              {profile.tabs
+                .filter((t) => t.url !== HOME_URL)
+                .map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -648,7 +650,7 @@ function Chrome({
               <button
                 type="button"
                 title="New tab (Ctrl+T)"
-                onClick={() => newTab()}
+                onClick={() => newTab("about:blank")}
                 className="mb-0.5 grid size-7 place-items-center rounded-md hover:bg-[var(--btn)]"
               >
                 <Plus className="size-3.5" />
@@ -673,7 +675,14 @@ function Chrome({
               <RotateCw className="size-4" />
             </IconBtn>
             {config.showHomeButton ? (
-              <IconBtn label="Home" onClick={goHome}>
+              <IconBtn
+                label="Home"
+                onClick={() => {
+                  const home = profile.tabs.find((t) => t.url === HOME_URL);
+                  if (home) selectTab(home.id);
+                  else goHome();
+                }}
+              >
                 <Home className="size-4" />
               </IconBtn>
             ) : null}
@@ -756,7 +765,9 @@ function Chrome({
         <div className="flex min-h-0 flex-1">
           {config.verticalTabs && !kiosk ? (
             <div className="flex w-44 shrink-0 flex-col gap-1 overflow-y-auto border-r border-[var(--border)] bg-[var(--panel)] p-1.5">
-              {profile.tabs.map((t) => (
+              {profile.tabs
+                .filter((t) => t.url !== HOME_URL)
+                .map((t) => (
                 <button
                   key={t.id}
                   type="button"
@@ -781,7 +792,7 @@ function Chrome({
               ))}
               <button
                 type="button"
-                onClick={() => newTab()}
+                onClick={() => newTab("about:blank")}
                 className="rounded-lg px-2 py-2 text-left text-xs text-[var(--muted)] hover:bg-[var(--btn)]"
               >
                 New tab
@@ -789,23 +800,28 @@ function Chrome({
             </div>
           ) : null}
           <div className="flex min-h-0 min-w-0 flex-1" style={{ zoom: `${zoom}%` }}>
-            <div className="relative min-h-0 min-w-0 flex-1">
-              {profile.tabs.map((t) => (
-                <div
-                  key={t.id}
-                  className={cn(
-                    "absolute inset-0 h-full w-full",
-                    t.id === tab.id ? "z-10" : "z-0 invisible pointer-events-none",
-                  )}
-                  aria-hidden={t.id !== tab.id}
-                >
-                  <PageView tabId={t.id} url={t.url} title={t.title} reloadKey={reloadKeys[t.id] ?? 0} />
-                </div>
-              ))}
+            <div
+              className={cn(
+                "min-h-0 min-w-0",
+                tab.url === HOME_URL ? "flex-1" : "w-[26rem] shrink-0 border-r border-[var(--border)]",
+              )}
+            >
+              <WorkspaceHome />
             </div>
-            {splitView ? (
-              <div className="min-h-0 min-w-0 flex-1 border-l border-[var(--border)]">
-                <WorkspaceHome />
+            {tab.url !== HOME_URL ? (
+              <div className="relative min-h-0 min-w-0 flex-1">
+                {profile.tabs.map((t) => (
+                  <div
+                    key={t.id}
+                    className={cn(
+                      "absolute inset-0 h-full w-full",
+                      t.id === tab.id ? "z-10" : "z-0 invisible pointer-events-none",
+                    )}
+                    aria-hidden={t.id !== tab.id}
+                  >
+                    <PageView tabId={t.id} url={t.url} title={t.title} reloadKey={reloadKeys[t.id] ?? 0} />
+                  </div>
+                ))}
               </div>
             ) : null}
           </div>

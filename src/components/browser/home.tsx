@@ -426,7 +426,7 @@ function CurrencyBadge({ currency }: { currency: DeskAgentArticle["currency"] })
 }
 
 function QuickAccessPanel() {
-  const navigate = useBrowserStore((s) => s.navigate);
+  const newTab = useBrowserStore((s) => s.newTab);
   const profile = useBrowserStore((s) => s.activeProfile());
   const addQuickAccess = useBrowserStore((s) => s.addQuickAccess);
   const removeQuickAccess = useBrowserStore((s) => s.removeQuickAccess);
@@ -474,7 +474,7 @@ function QuickAccessPanel() {
               editing={editing}
               canUp={index > 0}
               canDown={index < items.length - 1}
-              onOpen={() => navigate(item.url, item.label)}
+              onOpen={() => newTab(item.url)}
               onRemove={() => removeQuickAccess(item.id)}
               onMove={(dir) => moveQuickAccess(item.id, dir)}
             />
