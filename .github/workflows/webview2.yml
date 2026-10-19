@@ -1,0 +1,44 @@
+name: WebView2 Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - name: Publish WebView2 host
+        run: dotnet publish host/SpartanBrowser/SpartanBrowser.csproj -c Release -r win-x64 --self-contained true -o publish
+      - name: Bundle the desk server
+        run: |
+          New-Item -ItemType Directory -Force -Path publish/app-server | Out-Null
+          Copy-Item -Recurse .output/* publish/app-server/
+      - name: Zip
+        run: Compress-Archive -Path publish/* -DestinationPath SpartanBrowser-WebView2-win-x64.zip
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            SpartanBrowser-WebView2-win-x64.zip
+            policy/desk-policy.json
+            knowledge/desk-knowledge.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
