@@ -143,6 +143,8 @@ export function WorkspaceHome() {
           </section>
         ) : null}
 
+        <CallerCard />
+
         <DeskAgentSearch
           query={query}
           busy={busy}
@@ -219,6 +221,113 @@ export function WorkspaceHome() {
         <AgentSheet result={result} openId={openId} onPick={setOpenId} onClose={clearAsk} />
       ) : null}
     </div>
+  );
+}
+
+function CallerCard() {
+  const call = useBrowserStore((s) => s.activeCall);
+  const notes = useBrowserStore((s) => s.callNotes);
+  const setCall = useBrowserStore((s) => s.setActiveCall);
+  const clearCall = useBrowserStore((s) => s.clearActiveCall);
+  const addNote = useBrowserStore((s) => s.addCallNote);
+  const [draft, setDraft] = useState({ name: "", employeeId: "", department: "", ticket: "" });
+  const [note, setNote] = useState("");
+  const current = call ?? draft;
+  const matches = notes.filter(
+    (row) => current.employeeId.trim() && row.employeeId.toLowerCase() === current.employeeId.trim().toLowerCase(),
+  );
+
+  function update(partial: Partial<typeof draft>) {
+    const next = { ...current, ...partial };
+    setDraft(next);
+    if (next.name.trim() || next.employeeId.trim() || next.ticket.trim()) setCall(next);
+    else clearCall();
+  }
+
+  return (
+    <section className="rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-sm font-medium">Current call</h2>
+        {call ? (
+          <button
+            type="button"
+            className="text-xs text-[var(--muted)] hover:text-[var(--fg)]"
+            onClick={() => {
+              setDraft({ name: "", employeeId: "", department: "", ticket: "" });
+              clearCall();
+            }}
+          >
+            End call
+          </button>
+        ) : null}
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <input
+          value={current.name}
+          onChange={(e) => update({ name: e.target.value })}
+          placeholder="Caller name"
+          aria-label="Caller name"
+          className="h-11 rounded-xl bg-[var(--btn)] px-3 text-sm outline-none"
+        />
+        <input
+          value={current.employeeId}
+          onChange={(e) => update({ employeeId: e.target.value })}
+          placeholder="Employee ID"
+          aria-label="Employee ID"
+          className="h-11 rounded-xl bg-[var(--btn)] px-3 text-sm outline-none"
+        />
+        <input
+          value={current.department}
+          onChange={(e) => update({ department: e.target.value })}
+          placeholder="Department"
+          aria-label="Department"
+          className="h-11 rounded-xl bg-[var(--btn)] px-3 text-sm outline-none"
+        />
+        <input
+          value={current.ticket}
+          onChange={(e) => update({ ticket: e.target.value })}
+          placeholder="Ticket number"
+          aria-label="Ticket number"
+          className="h-11 rounded-xl bg-[var(--btn)] px-3 text-sm outline-none"
+        />
+      </div>
+      <p className="mt-3 text-xs text-[var(--muted)]">
+        This card stays up while you open MyIT, SmartIT, or NSD. End call clears it. Notes stay on this PC, filed by employee ID, until the cloud profile exists.
+      </p>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Note for the next shift"
+          aria-label="Note for the next shift"
+          className="h-11 min-w-0 flex-1 rounded-xl bg-[var(--btn)] px-3 text-sm outline-none"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          disabled={!note.trim() || !current.employeeId.trim()}
+          onClick={() => {
+            addNote(note);
+            setNote("");
+          }}
+        >
+          Save note
+        </Button>
+      </div>
+      {matches.length ? (
+        <ul className="mt-4 divide-y divide-[var(--border)]">
+          {matches.slice(0, 5).map((row) => (
+            <li key={row.id} className="py-2 text-sm">
+              <p>{row.body}</p>
+              <p className="mt-0.5 text-xs text-[var(--muted)]">
+                {row.author} · {new Date(row.at).toLocaleString()}
+                {row.ticket ? ` · ${row.ticket}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </section>
   );
 }
 

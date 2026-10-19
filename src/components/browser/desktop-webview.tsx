@@ -1,6 +1,14 @@
 import { useEffect, useRef } from "react";
 import { useBrowserStore } from "@/lib/browser/store";
 
+function hostFrom(url: string) {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return "";
+  }
+}
+
 function postHost(message: Record<string, unknown>) {
   const bridge = (window as unknown as { chrome?: { webview?: { postMessage: (m: unknown) => void } } }).chrome
     ?.webview;
@@ -48,8 +56,14 @@ export function DesktopWebview({
     observer.observe(el);
     const timer = window.setInterval(send, 400);
     const onMessage = (event: Event) => {
-      const data = (event as Event & { data?: { type?: string; tabId?: string; url?: string; title?: string } }).data;
-      if (!data || data.tabId !== tabId) return;
+      const data = (event as Event & { data?: { type?: string; tabId?: string; url?: string; title?: string; username?: string; password?: string } }).data;
+      if (!data) return;
+      if (data.type === "login-offer" && data.username && data.password) {
+        const host = data.url ? hostFrom(data.url) : "";
+        if (host) useBrowserStore.getState().offerSave(host, data.username, data.password);
+        return;
+      }
+      if (data.tabId !== tabId) return;
       if (data.type === "guest-nav" && data.url) useBrowserStore.getState().navigateTab(tabId, data.url);
       if (data.type === "guest-title" && data.title) useBrowserStore.getState().setTabTitle(data.title, tabId);
     };

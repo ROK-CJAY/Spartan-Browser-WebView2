@@ -167,6 +167,7 @@ export type BrowserConfig = {
   entraUpn: string;
   windowsAccount: string;
   windowsDisplayName: string;
+  neverSaveHosts: string[];
   clearOnClose: ClearOnClose;
 };
 
@@ -185,6 +186,24 @@ export type SavedLogin = {
   kind?: "web" | "elevated";
   tool?: ElevatedToolId;
   expiresAt?: string;
+};
+
+export type CallNote = {
+  id: string;
+  employeeId: string;
+  callerName: string;
+  department: string;
+  ticket: string;
+  body: string;
+  author: string;
+  at: string;
+};
+
+export type ActiveCall = {
+  name: string;
+  employeeId: string;
+  department: string;
+  ticket: string;
 };
 
 export type DownloadItem = {
@@ -226,6 +245,7 @@ export type BrowserPayload = {
   config: BrowserConfig;
   logins: SavedLogin[];
   downloads: DownloadItem[];
+  callNotes: CallNote[];
   vaultPinHash?: string | null;
 };
 
@@ -475,6 +495,7 @@ export function defaultConfig(): BrowserConfig {
     entraUpn: "",
     windowsAccount: "",
     windowsDisplayName: "",
+    neverSaveHosts: [],
     clearOnClose: defaultClearOnClose(),
   };
 }
@@ -596,6 +617,7 @@ export function defaultPayload(): BrowserPayload {
     config: defaultConfig(),
     logins: [],
     downloads: [],
+    callNotes: [],
     vaultPinHash: null,
   };
 }

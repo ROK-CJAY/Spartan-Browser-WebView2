@@ -25,6 +25,8 @@ import {
   type PanelId,
   type Profile,
   type QuickAccessItem,
+  type ActiveCall,
+  type CallNote,
   type SavedLogin,
   type SettingsSection,
   type ThemeSettings,
@@ -59,6 +61,9 @@ type BrowserStore = BrowserPayload & {
   splitView: boolean;
   closedTabs: Profile["tabs"];
   bookmarkPromptOpen: boolean;
+  saveOffer: { site: string; username: string; password: string } | null;
+  activeCall: ActiveCall | null;
+  callNotes: CallNote[];
   sessionOwnerId: string | null;
   sessionReady: boolean;
   vaultUnlocked: boolean;
@@ -126,6 +131,11 @@ type BrowserStore = BrowserPayload & {
   setDeleteDialogOpen: (v: boolean) => void;
   setSplitView: (v: boolean) => void;
   setBookmarkPromptOpen: (v: boolean) => void;
+  offerSave: (site: string, username: string, password: string) => void;
+  dismissSaveOffer: (never?: boolean) => void;
+  setActiveCall: (call: ActiveCall) => void;
+  clearActiveCall: () => void;
+  addCallNote: (body: string) => void;
   addLogin: (
     site: string,
     username: string,
@@ -262,6 +272,9 @@ export const useBrowserStore = create<BrowserStore>()(
       splitView: false,
       closedTabs: [],
       bookmarkPromptOpen: false,
+      saveOffer: null,
+      activeCall: null,
+      callNotes: [],
       sessionOwnerId: null,
       sessionReady: false,
       vaultUnlocked: true,
@@ -277,6 +290,7 @@ export const useBrowserStore = create<BrowserStore>()(
           config: s.config,
           logins: persistableLogins(s.logins, s.config.syncPasswords),
           downloads: s.downloads,
+          callNotes: s.callNotes,
           vaultPinHash: s.vaultPinHash,
         };
       },
@@ -292,6 +306,7 @@ export const useBrowserStore = create<BrowserStore>()(
           },
           logins: persistableLogins(payload.logins ?? []),
           downloads: payload.downloads ?? [],
+          callNotes: payload.callNotes ?? [],
           vaultPinHash: payload.vaultPinHash ?? null,
           vaultUnlocked: !payload.vaultPinHash,
           vaultPin: null,
@@ -337,6 +352,7 @@ export const useBrowserStore = create<BrowserStore>()(
           },
           logins: persistableLogins(fresh.logins ?? []),
           downloads: fresh.downloads ?? [],
+          callNotes: fresh.callNotes ?? [],
           vaultPinHash: fresh.vaultPinHash ?? null,
           vaultUnlocked: !(fresh.vaultPinHash ?? null),
           vaultPin: null,
@@ -838,6 +854,47 @@ export const useBrowserStore = create<BrowserStore>()(
       setDeleteDialogOpen: (v) => set({ deleteDialogOpen: v, menuOpen: false }),
       setSplitView: (v) => set({ splitView: v, menuOpen: false }),
       setBookmarkPromptOpen: (v) => set({ bookmarkPromptOpen: v, menuOpen: false }),
+      offerSave: (site, username, password) => {
+        const st = get();
+        const host = site.trim().toLowerCase();
+        const user = username.trim();
+        if (!st.config.savePasswords || !host || !user || !password) return;
+        const blocked = st.config.neverSaveHosts ?? [];
+        if (blocked.some((h) => h.toLowerCase() === host)) return;
+        const already = st.logins.some(
+          (l) => l.site.toLowerCase() === host && l.username === user && l.password === password,
+        );
+        if (already) return;
+        set({ saveOffer: { site: host, username: user, password } });
+      },
+      dismissSaveOffer: (never) => {
+        const offer = get().saveOffer;
+        if (never && offer) {
+          const hosts = get().config.neverSaveHosts ?? [];
+          if (!hosts.some((h) => h.toLowerCase() === offer.site)) {
+            get().setConfig({ neverSaveHosts: [...hosts, offer.site] });
+          }
+        }
+        set({ saveOffer: null });
+      },
+      setActiveCall: (call) => set({ activeCall: call }),
+      clearActiveCall: () => set({ activeCall: null }),
+      addCallNote: (body) => {
+        const text = body.trim();
+        const call = get().activeCall;
+        if (!text || !call?.employeeId.trim()) return;
+        const note: CallNote = {
+          id: newId(),
+          employeeId: call.employeeId.trim(),
+          callerName: call.name.trim(),
+          department: call.department.trim(),
+          ticket: call.ticket.trim(),
+          body: text,
+          author: get().config.windowsDisplayName || get().config.entraUpn || "Desk",
+          at: new Date().toISOString(),
+        };
+        set((s) => ({ callNotes: [note, ...s.callNotes].slice(0, 200) }));
+      },
       addLogin: async (site, username, password, extra) => {
         const st = get();
         if (!st.vaultUnlocked && password) return;
@@ -911,6 +968,7 @@ export const useBrowserStore = create<BrowserStore>()(
         config: s.config,
         logins: persistableLogins(s.logins),
         downloads: s.downloads,
+        callNotes: s.callNotes,
         vaultPinHash: s.vaultPinHash,
       }),
       onRehydrateStorage: () => (state) => {

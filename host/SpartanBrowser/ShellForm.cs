@@ -9,6 +9,7 @@ sealed class ShellForm : Form
     readonly WebView2 _shell = new() { Dock = DockStyle.Fill };
     readonly Dictionary<string, WebView2> _guests = new();
     readonly Dictionary<string, string> _lastNav = new();
+    readonly Dictionary<string, int> _reload = new();
     CoreWebView2Environment? _env;
     Process? _server;
     bool _kiosk;
@@ -124,7 +125,9 @@ sealed class ShellForm : Form
             await guest.EnsureCoreWebView2Async(_env);
             var core = guest.CoreWebView2;
             core.Settings.IsStatusBarEnabled = false;
+            await core.AddScriptToExecuteOnDocumentCreatedAsync(LoginCaptureScript());
             var tabId = id;
+            core.WebMessageReceived += (_, e) => OnGuestLogin(tabId, e.WebMessageAsJson);
             core.NavigationCompleted += (_, _) =>
                 Post(new { type = "guest-nav", tabId, url = core.Source });
             core.DocumentTitleChanged += (_, _) =>
@@ -289,6 +292,49 @@ sealed class ShellForm : Form
         Close();
         return new { ok = true };
     }
+
+    void OnGuestLogin(string tabId, string json)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+            var type = root.TryGetProperty("type", out var t) ? t.GetString() : "";
+            if (type != "login-attempt") return;
+            var username = root.TryGetProperty("username", out var u) ? u.GetString() ?? "" : "";
+            var password = root.TryGetProperty("password", out var p) ? p.GetString() ?? "" : "";
+            var url = root.TryGetProperty("url", out var href) ? href.GetString() ?? "" : "";
+            if (username.Length == 0 || password.Length == 0) return;
+            Post(new { type = "login-offer", tabId, url, username, password });
+        }
+        catch
+        {
+            /* ignore malformed page messages */
+        }
+    }
+
+    static string LoginCaptureScript() => """
+        (() => {
+          if (window.__spartanLoginCapture) return;
+          window.__spartanLoginCapture = true;
+          function grab(form) {
+            const pass = form.querySelector('input[type="password"]');
+            if (!pass || !pass.value) return;
+            const user = form.querySelector('input[type="email"], input[type="text"], input[name*="user" i], input[autocomplete="username"]');
+            if (!user || !user.value) return;
+            window.chrome.webview.postMessage({
+              type: "login-attempt",
+              username: user.value,
+              password: pass.value,
+              url: location.href
+            });
+          }
+          document.addEventListener("submit", (event) => {
+            const form = event.target;
+            if (form && form.tagName === "FORM") grab(form);
+          }, true);
+        })();
+        """;
 
     void Post(object payload)
     {

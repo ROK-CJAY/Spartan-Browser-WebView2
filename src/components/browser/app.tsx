@@ -247,6 +247,7 @@ function Chrome({
   const config = useBrowserStore((s) => s.config);
   const profile = useBrowserStore((s) => s.activeProfile());
   const tab = useBrowserStore((s) => s.activeTab());
+  const activeCall = useBrowserStore((s) => s.activeCall);
   const navigate = useBrowserStore((s) => s.navigate);
   const newTab = useBrowserStore((s) => s.newTab);
   const closeTab = useBrowserStore((s) => s.closeTab);
@@ -829,7 +830,8 @@ function Chrome({
               </button>
             </div>
           ) : null}
-          <div className="flex min-h-0 min-w-0 flex-1" style={{ zoom: `${zoom}%` }}>
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col" style={{ zoom: `${zoom}%` }}>
+            {activeCall && tab.url !== HOME_URL ? <CallStrip /> : null}
             <div className="relative min-h-0 min-w-0 flex-1">
               {profile.tabs.map((t) => (
                 <div
@@ -871,6 +873,7 @@ function Chrome({
       </div>
       </div>
       <BookmarkPrompt />
+      <SavePasswordBar />
       <DeleteDataDialog />
       {typoUrl ? (
         <div className="fixed inset-0 z-[90] grid place-items-center bg-black/50 p-4" onClick={() => setTypoUrl(null)}>
@@ -1325,6 +1328,71 @@ function ProfilePanel() {
   );
 }
 
+function SavePasswordBar() {
+  const offer = useBrowserStore((s) => s.saveOffer);
+  const addLogin = useBrowserStore((s) => s.addLogin);
+  const dismiss = useBrowserStore((s) => s.dismissSaveOffer);
+  if (!offer) return null;
+  return (
+    <div className="fixed bottom-4 left-1/2 z-[80] w-[min(100%-2rem,28rem)] -translate-x-1/2 rounded-2xl border border-[var(--border)] bg-[var(--panel)] p-4 shadow-2xl">
+      <p className="text-sm font-medium">Save password?</p>
+      <p className="mt-1 text-xs text-[var(--muted)]">
+        {offer.username} on {offer.site}
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="min-h-9 rounded-lg bg-[var(--accent)] px-3 text-sm font-medium text-[var(--accent-fg)]"
+          onClick={() => {
+            void addLogin(offer.site, offer.username, offer.password);
+            dismiss();
+          }}
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          className="min-h-9 rounded-lg px-3 text-sm hover:bg-[var(--btn)]"
+          onClick={() => dismiss()}
+        >
+          Not now
+        </button>
+        <button
+          type="button"
+          className="min-h-9 rounded-lg px-3 text-sm text-[var(--muted)] hover:bg-[var(--btn)]"
+          onClick={() => dismiss(true)}
+        >
+          Never for this site
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function CallStrip() {
+  const call = useBrowserStore((s) => s.activeCall);
+  const clear = useBrowserStore((s) => s.clearActiveCall);
+  const selectHome = () => {
+    const home = useBrowserStore.getState().activeProfile().tabs.find((t) => t.url === HOME_URL);
+    if (home) useBrowserStore.getState().selectTab(home.id);
+  };
+  if (!call) return null;
+  return (
+    <div className="flex items-center gap-3 border-b border-[var(--border)] bg-[var(--panel)] px-3 py-2 text-xs">
+      <span className="font-medium">On a call</span>
+      <span className="min-w-0 flex-1 truncate text-[var(--muted)]">
+        {[call.name, call.employeeId, call.department, call.ticket].filter(Boolean).join(" · ")}
+      </span>
+      <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--btn)]" onClick={selectHome}>
+        Open card
+      </button>
+      <button type="button" className="rounded-md px-2 py-1 hover:bg-[var(--btn)]" onClick={clear}>
+        End call
+      </button>
+    </div>
+  );
+}
+
 function PageView({
   tabId,
   url,
@@ -1352,6 +1420,40 @@ function PageView({
 function PersistentIframe({ url, title, reloadKey }: { url: string; title: string; reloadKey: number }) {
   const ref = useRef<HTMLIFrameElement>(null);
   const lastUrl = useRef(url);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onLoad = () => {
+      try {
+        const doc = el.contentDocument;
+        if (!doc || doc.getElementById("spartan-save")) return;
+        const script = doc.createElement("script");
+        script.id = "spartan-save";
+        script.textContent =
+          "document.addEventListener('submit',function(event){var form=event.target;if(!form||form.tagName!=='FORM')return;var pass=form.querySelector('input[type=password]');if(!pass||!pass.value)return;var user=form.querySelector('input[type=email],input[type=text]');if(!user||!user.value)return;parent.postMessage({type:'spartan-login',username:user.value,password:pass.value,url:location.href},'*');},true);";
+        doc.documentElement.appendChild(script);
+      } catch {
+        /* Cross-origin pages are captured by the installed WebView2 host. */
+      }
+    };
+    const onMessage = (event: MessageEvent) => {
+      if (event.source !== el.contentWindow) return;
+      const data = event.data as { type?: string; username?: string; password?: string; url?: string };
+      if (data?.type !== "spartan-login" || !data.username || !data.password || !data.url) return;
+      try {
+        useBrowserStore.getState().offerSave(new URL(data.url).hostname, data.username, data.password);
+      } catch {
+        /* ignore a bad url */
+      }
+    };
+    el.addEventListener("load", onLoad);
+    window.addEventListener("message", onMessage);
+    return () => {
+      el.removeEventListener("load", onLoad);
+      window.removeEventListener("message", onMessage);
+    };
+  }, []);
 
   useEffect(() => {
     const el = ref.current;

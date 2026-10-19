@@ -12,6 +12,7 @@ export function SecureLaunch({ url, title }: { url: string; title: string }) {
   const unlocked = useBrowserStore((s) => s.vaultUnlocked);
   const savePasswords = useBrowserStore((s) => s.config.savePasswords);
   const addLogin = useBrowserStore((s) => s.addLogin);
+  const offerSave = useBrowserStore((s) => s.offerSave);
   const matches = useMemo(() => loginsForUrl(logins, url), [logins, url]);
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
@@ -89,7 +90,8 @@ export function SecureLaunch({ url, title }: { url: string; title: string }) {
             onSubmit={(e) => {
               e.preventDefault();
               if (!user.trim()) return;
-              void addLogin(host || url, user.trim(), password);
+              if (password) offerSave(host || url, user.trim(), password);
+              else void addLogin(host || url, user.trim(), "");
               setUser("");
               setPassword("");
             }}
