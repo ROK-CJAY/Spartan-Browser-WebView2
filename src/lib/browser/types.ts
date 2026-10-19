@@ -298,6 +298,7 @@ export const ITD_TOOLS: ItdTool[] = [
   { id: "smartit", label: "Smart IT", url: "https://miamidade-smartit.us.onbmc.com/smartit/app/#/create/smart-recorder" },
   { id: "azure", label: "Entra ID", url: "https://entra.microsoft.com/#home" },
   { id: "ens", label: "ENS Monitor", url: "https://ensmonitor.miamidade.gov" },
+  { id: "wxcc", label: "Webex Contact Center", url: "https://desktop.wxcc-us1.cisco.com/" },
   { id: "citrix-mgr", label: "Citrix Manager", url: "https://xenapp.cloud.com/manage/webstudio/home" },
 ];
 
