@@ -297,14 +297,6 @@ export const ITD_TOOLS: ItdTool[] = [
   },
   { id: "smartit", label: "Smart IT", url: "https://miamidade-smartit.us.onbmc.com/smartit/app/#/create/smart-recorder" },
   { id: "azure", label: "Entra ID", url: "https://entra.microsoft.com/#home" },
-  {
-    id: "eams",
-    label: "EAMS",
-    submenu: [
-      { id: "dtpw", label: "DTPW (Transit)", url: "https://prdentext.miamidade.gov:7443/web/base/logindisp?tenant=MDTPROD" },
-      { id: "pros", label: "PROS (Parks)", url: "https://prdentext.miamidade.gov:7443/web/base/logindisp?tenant=PRKPROD" },
-    ],
-  },
   { id: "citrix-mgr", label: "Citrix Manager", url: "https://xenapp.cloud.com/manage/webstudio/home" },
 ];
 
